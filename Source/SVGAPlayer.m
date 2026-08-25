@@ -26,6 +26,7 @@
 @property (nonatomic, copy) NSDictionary<NSString *, UIImage *> *dynamicObjects;
 @property (nonatomic, copy) NSDictionary<NSString *, NSAttributedString *> *dynamicTexts;
 @property (nonatomic, copy) NSDictionary<NSString *, SVGAPlayerDynamicDrawingBlock> *dynamicDrawings;
+@property (nonatomic, copy) NSDictionary<NSString *, SVGAEventBlock> *dynamicEvents;
 @property (nonatomic, copy) NSDictionary<NSString *, NSNumber *> *dynamicHiddens;
 @property (nonatomic, assign) int loopCount;
 @property (nonatomic, assign) NSRange currentRange;
@@ -60,6 +61,12 @@
 - (void)initPlayer {
     self.contentMode = UIViewContentModeTop;
     self.clearsAfterStop = YES;
+    self.canvasClippingEnabled = YES;
+}
+
+- (void)setCanvasClippingEnabled:(BOOL)canvasClippingEnabled {
+    _canvasClippingEnabled = canvasClippingEnabled;
+    self.drawLayer.masksToBounds = canvasClippingEnabled;
 }
 
 - (void)willMoveToSuperview:(UIView *)newSuperview {
@@ -187,7 +194,7 @@
 - (void)draw {
     self.drawLayer = [[CALayer alloc] init];
     self.drawLayer.frame = CGRectMake(0, 0, self.videoItem.videoSize.width, self.videoItem.videoSize.height);
-    self.drawLayer.masksToBounds = true;
+    self.drawLayer.masksToBounds = self.canvasClippingEnabled;
     NSMutableDictionary *tempHostLayers = [NSMutableDictionary dictionary];
     NSMutableArray *tempContentLayers = [NSMutableArray array];
     
@@ -419,6 +426,26 @@
     }];
 }
 
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    UITouch *touch = touches.anyObject;
+    if (touch == nil || self.dynamicEvents.count == 0) {
+        return;
+    }
+
+    CGPoint touchPoint = [touch locationInView:self];
+    for (SVGAContentLayer *layer in self.contentLayers) {
+        SVGAEventBlock eventBlock = self.dynamicEvents[layer.imageKey];
+        if (eventBlock == nil) {
+            continue;
+        }
+
+        CGPoint layerPoint = [layer convertPoint:touchPoint fromLayer:self.layer];
+        if (CGRectContainsPoint(layer.bounds, layerPoint)) {
+            eventBlock(self);
+        }
+    }
+}
+
 #pragma mark - Dynamic Object
 
 - (void)setImage:(UIImage *)image forKey:(NSString *)aKey {
@@ -499,6 +526,20 @@
     }
 }
 
+- (void)setEventBlock:(SVGAEventBlock)eventBlock forKey:(NSString *)aKey {
+    if (aKey.length <= 0) {
+        return;
+    }
+    NSMutableDictionary *mutableDynamicEvents = [self.dynamicEvents mutableCopy];
+    if (eventBlock != nil) {
+        mutableDynamicEvents[aKey] = [eventBlock copy];
+    }
+    else {
+        [mutableDynamicEvents removeObjectForKey:aKey];
+    }
+    self.dynamicEvents = mutableDynamicEvents.copy;
+}
+
 - (void)setHidden:(BOOL)hidden forKey:(NSString *)aKey {
     NSMutableDictionary *mutableDynamicHiddens = [self.dynamicHiddens mutableCopy];
     [mutableDynamicHiddens setObject:@(hidden) forKey:aKey];
@@ -518,6 +559,7 @@
     self.dynamicTexts = nil;
     self.dynamicHiddens = nil;
     self.dynamicDrawings = nil;
+    self.dynamicEvents = nil;
 }
 
 - (NSDictionary *)dynamicObjects {
@@ -546,6 +588,13 @@
         _dynamicDrawings = @{};
     }
     return _dynamicDrawings;
+}
+
+- (NSDictionary<NSString *,SVGAEventBlock> *)dynamicEvents {
+    if (_dynamicEvents == nil) {
+        _dynamicEvents = @{};
+    }
+    return _dynamicEvents;
 }
 
 - (NSRunLoopMode)mainRunLoopMode {

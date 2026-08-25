@@ -24,6 +24,7 @@
 @end
 
 typedef void(^SVGAPlayerDynamicDrawingBlock)(CALayer *contentLayer, NSInteger frameIndex);
+typedef void(^SVGAEventBlock)(SVGAPlayer *player);
 
 @interface SVGAPlayer : UIView
 
@@ -31,6 +32,9 @@ typedef void(^SVGAPlayerDynamicDrawingBlock)(CALayer *contentLayer, NSInteger fr
 @property (nonatomic, strong) SVGAVideoEntity *videoItem;
 @property (nonatomic, assign) IBInspectable int loops;
 @property (nonatomic, assign) IBInspectable BOOL clearsAfterStop;
+/// Controls whether content outside the SVGA canvas is clipped. Defaults to YES
+/// to preserve the original rendering behavior.
+@property (nonatomic, assign) IBInspectable BOOL canvasClippingEnabled;
 @property (nonatomic, copy) NSString *fillMode;
 @property (nonatomic, copy) NSRunLoopMode mainRunLoopMode;
 
@@ -49,6 +53,7 @@ typedef void(^SVGAPlayerDynamicDrawingBlock)(CALayer *contentLayer, NSInteger fr
 - (void)setImage:(UIImage *)image forKey:(NSString *)aKey referenceLayer:(CALayer *)referenceLayer; // deprecated from 2.0.1
 - (void)setAttributedText:(NSAttributedString *)attributedText forKey:(NSString *)aKey;
 - (void)setDrawingBlock:(SVGAPlayerDynamicDrawingBlock)drawingBlock forKey:(NSString *)aKey;
+- (void)setEventBlock:(SVGAEventBlock)eventBlock forKey:(NSString *)aKey;
 - (void)setHidden:(BOOL)hidden forKey:(NSString *)aKey;
 - (void)clearDynamicObjects;
 

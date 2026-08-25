@@ -11,6 +11,7 @@
 #import "SVGABezierPath.h"
 #import "SVGAVideoSpriteEntity.h"
 #import "SVGAAudioEntity.h"
+#import "SVGAVideoMemoryCache.h"
 #import "Svga.pbobjc.h"
 
 #define MP3_MAGIC_NUMBER "ID3"
@@ -29,21 +30,6 @@
 @end
 
 @implementation SVGAVideoEntity
-
-static NSCache *videoCache;
-static NSMapTable * weakCache;
-static dispatch_semaphore_t videoSemaphore;
-
-+ (void)load {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        videoCache = [[NSCache alloc] init];
-        weakCache = [[NSMapTable alloc] initWithKeyOptions:NSPointerFunctionsStrongMemory
-        valueOptions:NSPointerFunctionsWeakMemory
-            capacity:64];
-        videoSemaphore = dispatch_semaphore_create(1);
-    });
-}
 
 - (instancetype)initWithJSONObject:(NSDictionary *)JSONObject cacheDir:(NSString *)cacheDir {
     self = [super init];
@@ -211,26 +197,26 @@ static dispatch_semaphore_t videoSemaphore;
 }
 
 + (SVGAVideoEntity *)readCache:(NSString *)cacheKey {
-    dispatch_semaphore_wait(videoSemaphore, DISPATCH_TIME_FOREVER);
-    SVGAVideoEntity * object = [videoCache objectForKey:cacheKey];
-    if (!object) {
-        object = [weakCache objectForKey:cacheKey];
-    }
-    dispatch_semaphore_signal(videoSemaphore);
-
-    return  object;
+    return [[SVGAVideoMemoryCache sharedCache] videoEntityForKey:cacheKey];
 }
 
 - (void)saveCache:(NSString *)cacheKey {
-    dispatch_semaphore_wait(videoSemaphore, DISPATCH_TIME_FOREVER);
-    [videoCache setObject:self forKey:cacheKey];
-    dispatch_semaphore_signal(videoSemaphore);
+    [[SVGAVideoMemoryCache sharedCache] setVideoEntity:self forKey:cacheKey useStrongCache:YES];
 }
 
 - (void)saveWeakCache:(NSString *)cacheKey {
-    dispatch_semaphore_wait(videoSemaphore, DISPATCH_TIME_FOREVER);
-    [weakCache setObject:self forKey:cacheKey];
-    dispatch_semaphore_signal(videoSemaphore);
+    [[SVGAVideoMemoryCache sharedCache] setVideoEntity:self forKey:cacheKey useStrongCache:NO];
+}
+
+- (NSUInteger)memoryCost {
+    __block NSUInteger totalCost = 0;
+    [self.images enumerateKeysAndObjectsUsingBlock:^(NSString * _Nonnull key, UIImage * _Nonnull image, BOOL * _Nonnull stop) {
+        CGImageRef imageRef = image.CGImage;
+        if (imageRef != NULL) {
+            totalCost += CGImageGetBytesPerRow(imageRef) * CGImageGetHeight(imageRef);
+        }
+    }];
+    return totalCost;
 }
 
 @end
@@ -242,4 +228,3 @@ static dispatch_semaphore_t videoSemaphore;
 @property (nonatomic, copy) NSString *matteKey;
 
 @end
-

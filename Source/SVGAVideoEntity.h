@@ -17,6 +17,7 @@
 @property (nonatomic, readonly) CGSize videoSize;
 @property (nonatomic, readonly) int FPS;
 @property (nonatomic, readonly) int frames;
+@property (nonatomic, readonly) NSUInteger memoryCost;
 @property (nonatomic, readonly) NSDictionary<NSString *, UIImage *> *images;
 @property (nonatomic, readonly) NSDictionary<NSString *, NSData *> *audiosData;
 @property (nonatomic, readonly) NSArray<SVGAVideoSpriteEntity *> *sprites;
@@ -37,5 +38,4 @@
 // NSMapTable弱缓存
 - (void)saveWeakCache:(NSString *)cacheKey;
 @end
-
 

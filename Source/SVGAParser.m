@@ -31,6 +31,14 @@ static NSOperationQueue *unzipQueue;
     unzipQueue.maxConcurrentOperationCount = 1;
 }
 
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _enabledMemoryCache = YES;
+    }
+    return self;
+}
+
 - (void)parseWithURL:(nonnull NSURL *)URL
      completionBlock:(void ( ^ _Nonnull )(SVGAVideoEntity * _Nullable videoItem))completionBlock
         failureBlock:(void ( ^ _Nullable)(NSError * _Nullable error))failureBlock {
